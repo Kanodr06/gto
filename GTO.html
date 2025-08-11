@@ -3,27 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabla Preflop Vision - Zeros Poker</title>
+    <title>Tabla Preflop GTO - Poker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .hand-cell {
-            width: 32px;
-            height: 32px;
-            font-size: 10px;
-            font-weight: bold;
-            text-align: center;
-            border: 1px solid #333;
-            cursor: pointer;
-        }
-        .suited { background-color: #e8f5e8; }
-        .offsuit { background-color: #f0f8ff; }
-        .pair { background-color: #fff2e8; }
-        .fold { background-color: #ffebee; }
-        .call { background-color: #fff3e0; }
-        .raise { background-color: #e8f5e8; }
-        .reraise { background-color: #e3f2fd; }
-        .premium { background-color: #f3e5f5; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-gray-100 p-4">
     <div class="max-w-7xl mx-auto">
@@ -32,46 +14,46 @@
             <p class="text-lg text-gray-600">Basada en Estadísticas de Solvers - Frecuencias Mixtas</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-4 rounded-lg shadow">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8 position-grid">
+            <div class="section-card">
                 <h3 class="font-bold text-center mb-2">Posiciones Tempranas</h3>
-                <div class="text-sm">UTG, UTG+1, UTG+2</div>
+                <div class="text-sm text-center">UTG, UTG+1, UTG+2</div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow">
+            <div class="section-card">
                 <h3 class="font-bold text-center mb-2">Posiciones Medias</h3>
-                <div class="text-sm">MP1, MP2, MP3</div>
+                <div class="text-sm text-center">MP1, MP2, MP3</div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow">
+            <div class="section-card">
                 <h3 class="font-bold text-center mb-2">Posiciones Tardías</h3>
-                <div class="text-sm">CO, BTN</div>
+                <div class="text-sm text-center">CO, BTN</div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow">
+            <div class="section-card">
                 <h3 class="font-bold text-center mb-2">Blinds</h3>
-                <div class="text-sm">SB, BB</div>
+                <div class="text-sm text-center">SB, BB</div>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+        <div class="section-card">
             <h2 class="text-2xl font-bold mb-4 text-center">Leyenda GTO - Frecuencias Mixtas</h2>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                <div class="flex items-center">
-                    <div class="w-4 h-4 premium mr-2 border"></div>
+                <div class="legend-item">
+                    <div class="legend-color premium"></div>
                     <span>95-100% (Premium)</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 raise mr-2 border"></div>
+                <div class="legend-item">
+                    <div class="legend-color raise"></div>
                     <span>75-94% (Raise)</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 reraise mr-2 border"></div>
+                <div class="legend-item">
+                    <div class="legend-color reraise"></div>
                     <span>50-74% (Mix R/C)</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 call mr-2 border"></div>
+                <div class="legend-item">
+                    <div class="legend-color call"></div>
                     <span>25-49% (Mix C/F)</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 fold mr-2 border"></div>
+                <div class="legend-item">
+                    <div class="legend-color fold"></div>
                     <span>0-24% (Fold)</span>
                 </div>
             </div>
@@ -81,9 +63,9 @@
         </div>
 
         <div class="mb-6">
-            <div class="bg-white p-4 rounded-lg shadow mb-4">
+            <div class="section-card">
                 <label for="position" class="block text-sm font-medium text-gray-700 mb-2">Selecciona tu posición:</label>
-                <select id="position" class="w-full p-2 border border-gray-300 rounded-md">
+                <select id="position" class="position-selector w-full">
                     <option value="utg">UTG (Under the Gun)</option>
                     <option value="mp">MP (Middle Position)</option>
                     <option value="co">CO (Cutoff)</option>
@@ -94,7 +76,7 @@
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+        <div class="section-card overflow-x-auto table-container">
             <h2 class="text-xl font-bold mb-4 text-center">Tabla de Rangos Preflop</h2>
             <div class="flex justify-center">
                 <table class="border-collapse">
@@ -105,7 +87,7 @@
             </div>
         </div>
 
-        <div class="mt-8 bg-white p-6 rounded-lg shadow">
+        <div class="section-card">
             <h3 class="text-xl font-bold mb-4">Instrucciones GTO - Estrategia Mixta</h3>
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
@@ -126,7 +108,7 @@
                         <li><strong>CO:</strong> ~22% VPIP</li>
                         <li><strong>BTN:</strong> ~28% VPIP (más loose)</li>
                         <li><strong>SB:</strong> ~38% VPIP vs BB</li>
-                        <li><strong>BB:</strong> ~35% defend vs raise</li>
+                        <li><strong>BB:</strong> ~35% defend vs range</li>
                     </ul>
                 </div>
             </div>
@@ -138,172 +120,51 @@
                 </p>
             </div>
         </div>
+
+        <div class="section-card">
+            <h3 class="text-xl font-bold mb-4">🚀 Transición al Post-Flop</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-bold mb-3 text-green-700">Cómo usar estos rangos después del flop:</h4>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-gray-700">
+                        <li><strong>Range Advantage:</strong> Evalúa si tu rango conecta mejor con el board que el oponente</li>
+                        <li><strong>Equity Realization:</strong> Considera tu posición para realizar la equity de tu rango</li>
+                        <li><strong>Nut Advantage:</strong> ¿Quién tiene más nuts en este board específico?</li>
+                        <li><strong>Betting Patterns:</strong> Usa el rango preflop para estimar holdings oponentes</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold mb-3 text-blue-700">Factores Post-Flop Clave:</h4>
+                    <ul class="list-disc list-inside space-y-2 text-sm text-gray-700">
+                        <li><strong>Board Texture:</strong> Dry (A72r) vs Wet (9♠8♠7♥)</li>
+                        <li><strong>SPR:</strong> Stack-to-Pot Ratio determina líneas</li>
+                        <li><strong>Initiative:</strong> El agresor preflop mantiene ventaja</li>
+                        <li><strong>Blockers:</strong> Usa cartas que bloquean nuts oponentes</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="example-box mt-6">
+                <h4 class="font-bold mb-2 text-purple-800">Ejemplo Práctico - BTN vs BB:</h4>
+                <div class="text-sm text-gray-800">
+                    <p class="mb-2"><strong>Preflop:</strong> Abres BTN con A♠5♠ (75% frecuencia según tabla), BB defiende</p>
+                    <p class="mb-2"><strong>Flop A♥7♣2♦:</strong> Tu rango tiene más Ax que BB, tienes range advantage → C-bet</p>
+                    <p class="mb-2"><strong>Turn 8♠:</strong> Board sigue seco, mantienes advantage → Bet again</p>
+                    <p><strong>River K♠:</strong> Evalúa si mejoró su calling range, considera bluffs con blockers</p>
+                </div>
+            </div>
+            
+            <div class="tip-box mt-4">
+                <p class="text-sm text-yellow-800">
+                    <strong>💡 Tip:</strong> Esta tabla preflop es tu "mapa" - te dice dónde empiezas el viaje. 
+                    Post-flop necesitas solvers específicos para cada board, pero conocer los rangos iniciales 
+                    es fundamental para todas las decisiones posteriores.
+                </p>
+            </div>
+        </div>
     </div>
 
-    <script>
-        const hands = [
-            ['AA', 'AKs', 'AQs', 'AJs', 'ATs', 'A9s', 'A8s', 'A7s', 'A6s', 'A5s', 'A4s', 'A3s', 'A2s'],
-            ['AKo', 'KK', 'KQs', 'KJs', 'KTs', 'K9s', 'K8s', 'K7s', 'K6s', 'K5s', 'K4s', 'K3s', 'K2s'],
-            ['AQo', 'KQo', 'QQ', 'QJs', 'QTs', 'Q9s', 'Q8s', 'Q7s', 'Q6s', 'Q5s', 'Q4s', 'Q3s', 'Q2s'],
-            ['AJo', 'KJo', 'QJo', 'JJ', 'JTs', 'J9s', 'J8s', 'J7s', 'J6s', 'J5s', 'J4s', 'J3s', 'J2s'],
-            ['ATo', 'KTo', 'QTo', 'JTo', 'TT', 'T9s', 'T8s', 'T7s', 'T6s', 'T5s', 'T4s', 'T3s', 'T2s'],
-            ['A9o', 'K9o', 'Q9o', 'J9o', 'T9o', '99', '98s', '97s', '96s', '95s', '94s', '93s', '92s'],
-            ['A8o', 'K8o', 'Q8o', 'J8o', 'T8o', '98o', '88', '87s', '86s', '85s', '84s', '83s', '82s'],
-            ['A7o', 'K7o', 'Q7o', 'J7o', 'T7o', '97o', '87o', '77', '76s', '75s', '74s', '73s', '72s'],
-            ['A6o', 'K6o', 'Q6o', 'J6o', 'T6o', '96o', '86o', '76o', '66', '65s', '64s', '63s', '62s'],
-            ['A5o', 'K5o', 'Q5o', 'J5o', 'T5o', '95o', '85o', '75o', '65o', '55', '54s', '53s', '52s'],
-            ['A4o', 'K4o', 'Q4o', 'J4o', 'T4o', '94o', '84o', '74o', '64o', '54o', '44', '43s', '42s'],
-            ['A3o', 'K3o', 'Q3o', 'J3o', 'T3o', '93o', '83o', '73o', '63o', '53o', '43o', '33', '32s'],
-            ['A2o', 'K2o', 'Q2o', 'J2o', 'T2o', '92o', '82o', '72o', '62o', '52o', '42o', '32o', '22']
-        ];
-
-        // Rangos GTO basados en estadísticas de solvers con frecuencias mixtas
-        const gtoRanges = {
-            utg: {
-                // UTG - ~12% VPIP según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'AQs'],
-                '85%': ['TT', 'AQo', 'AJs'],
-                '75%': ['99', 'AJo', 'KQs'],
-                '60%': ['88', 'ATs', 'KQo', 'KJs'],
-                '45%': ['77', 'ATo', 'KJo', 'QJs'],
-                '30%': ['66', 'A9s', 'KTs', 'QJo'],
-                '20%': ['55', 'A8s', 'A7s', 'KTo', 'JTs'],
-                '10%': ['44', 'A6s', 'A5s', 'K9s', 'QTs'],
-                '5%': ['33', 'A4s', 'A3s', 'A2s', 'Q9s', 'JTo'],
-                'fold': 'resto'
-            },
-            mp: {
-                // MP - ~16% VPIP según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'TT', 'AQs', 'AQo'],
-                '85%': ['99', 'AJs', 'AJo', 'KQs'],
-                '75%': ['88', 'ATs', 'KQo', 'KJs', 'KJo'],
-                '65%': ['77', 'ATo', 'A9s', 'KTs', 'QJs', 'QJo'],
-                '50%': ['66', 'A8s', 'A7s', 'KTo', 'K9s', 'QTs', 'JTs'],
-                '35%': ['55', 'A6s', 'A5s', 'A9o', 'Q9s', 'JTo', 'T9s'],
-                '25%': ['44', 'A4s', 'A3s', 'A2s', 'K8s', 'Q8s', 'J9s'],
-                '15%': ['33', '22', 'A8o', 'K7s', 'Q7s', 'T8s'],
-                '8%': ['A7o', 'K6s', 'J8s', '98s'],
-                'fold': 'resto'
-            },
-            co: {
-                // CO - ~22% VPIP según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'TT', 'AQs', 'AQo', 'AJs'],
-                '85%': ['99', 'AJo', 'ATs', 'KQs', 'KQo', 'KJs'],
-                '75%': ['88', 'ATo', 'A9s', 'KJo', 'KTs', 'QJs', 'QJo'],
-                '65%': ['77', 'A8s', 'A7s', 'A9o', 'KTo', 'K9s', 'QTs', 'JTs', 'JTo'],
-                '50%': ['66', 'A6s', 'A5s', 'A8o', 'K8s', 'K7s', 'Q9s', 'QTo', 'J9s', 'T9s'],
-                '40%': ['55', 'A4s', 'A3s', 'A7o', 'K6s', 'K5s', 'Q8s', 'J8s', 'T8s', '98s'],
-                '30%': ['44', 'A2s', 'A6o', 'A5o', 'K4s', 'Q7s', 'J7s', 'T7s', '97s', '87s'],
-                '20%': ['33', '22', 'A4o', 'A3o', 'K3s', 'K2s', 'Q6s', 'J6s', '96s', '86s', '76s'],
-                '12%': ['A2o', 'Q5s', 'Q4s', 'J5s', 'T6s', '95s', '85s', '75s', '65s'],
-                '6%': ['Q3s', 'Q2s', 'J4s', 'J3s', 'T5s', '94s', '84s', '74s', '64s', '54s'],
-                'fold': 'resto'
-            },
-            btn: {
-                // BTN - ~28% VPIP según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'TT', 'AQs', 'AQo', 'AJs', 'AJo'],
-                '85%': ['99', 'ATs', 'ATo', 'KQs', 'KQo', 'KJs', 'KJo'],
-                '75%': ['88', 'A9s', 'A9o', 'KTs', 'KTo', 'QJs', 'QJo', 'QTs'],
-                '65%': ['77', 'A8s', 'A7s', 'A8o', 'K9s', 'K8s', 'QTo', 'Q9s', 'JTs', 'JTo', 'J9s'],
-                '55%': ['66', 'A6s', 'A5s', 'A7o', 'K7s', 'K6s', 'Q8s', 'Q7s', 'J8s', 'J7s', 'T9s', 'T8s', '98s'],
-                '45%': ['55', 'A4s', 'A3s', 'A6o', 'A5o', 'K5s', 'K4s', 'Q6s', 'Q5s', 'J6s', 'J5s', 'T7s', 'T6s', '97s', '96s', '87s', '86s', '76s'],
-                '35%': ['44', 'A2s', 'A4o', 'A3o', 'K3s', 'K2s', 'Q4s', 'Q3s', 'J4s', 'J3s', 'T5s', 'T4s', '95s', '94s', '85s', '84s', '75s', '74s', '65s', '64s'],
-                '25%': ['33', '22', 'A2o', 'Q2s', 'J2s', 'T3s', 'T2s', '93s', '92s', '83s', '82s', '73s', '72s', '63s', '62s', '54s', '53s', '43s'],
-                '15%': ['K9o', 'K8o', 'K7o', 'Q9o', 'Q8o', 'J9o', 'J8o', 'T9o', 'T8o', '98o', '87o', '76o', '65o'],
-                '8%': ['K6o', 'K5o', 'Q7o', 'Q6o', 'J7o', 'T7o', '97o', '86o', '75o', '64o'],
-                '4%': ['52s', '42s', '32s', 'K4o', 'Q5o', 'J6o', 'T6o', '96o'],
-                'fold': 'resto'
-            },
-            sb: {
-                // SB vs BB - ~38% VPIP según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'TT', 'AQs', 'AQo', 'AJs', 'AJo'],
-                '85%': ['99', 'ATs', 'ATo', 'A9s', 'KQs', 'KQo', 'KJs', 'KJo'],
-                '75%': ['88', 'A8s', 'A7s', 'A9o', 'A8o', 'KTs', 'KTo', 'K9s', 'QJs', 'QJo', 'QTs'],
-                '65%': ['77', 'A6s', 'A5s', 'A7o', 'K8s', 'K7s', 'K9o', 'QTo', 'Q9s', 'Q8s', 'JTs', 'JTo', 'J9s'],
-                '55%': ['66', 'A4s', 'A3s', 'A6o', 'A5o', 'K6s', 'K5s', 'K8o', 'Q7s', 'Q6s', 'Q9o', 'J8s', 'J7s', 'J9o', 'T9s', 'T8s', '98s'],
-                '45%': ['55', 'A2s', 'A4o', 'A3o', 'K4s', 'K3s', 'K7o', 'K6o', 'Q5s', 'Q4s', 'Q8o', 'J6s', 'J5s', 'J8o', 'T7s', 'T6s', 'T9o', '97s', '96s', '87s', '86s'],
-                '35%': ['44', 'A2o', 'K2s', 'K5o', 'Q3s', 'Q2s', 'Q7o', 'J4s', 'J3s', 'J7o', 'T5s', 'T4s', 'T8o', '95s', '94s', '85s', '84s', '76s', '75s'],
-                '25%': ['33', '22', 'K4o', 'K3o', 'Q6o', 'Q5o', 'J2s', 'J6o', 'T3s', 'T2s', 'T7o', '93s', '92s', '83s', '82s', '74s', '73s', '65s', '64s'],
-                '15%': ['K2o', 'Q4o', 'Q3o', 'J5o', 'J4o', 'T6o', 'T5o', '98o', '72s', '63s', '62s', '54s', '53s', '43s'],
-                '8%': ['Q2o', 'J3o', 'J2o', 'T4o', 'T3o', '97o', '87o', '52s', '42s'],
-                '4%': ['T2o', '96o', '86o', '76o', '32s'],
-                'fold': 'resto'
-            },
-            bb: {
-                // BB vs Raise - ~35% defend según estadísticas GTO
-                '100%': ['AA', 'KK', 'QQ', 'AKs', 'AKo'],
-                '95%': ['JJ', 'TT', 'AQs', 'AQo', 'AJs', 'AJo'],
-                '85%': ['99', 'ATs', 'ATo', 'A9s', 'A8s', 'KQs', 'KQo', 'KJs', 'KJo'],
-                '75%': ['88', 'A7s', 'A6s', 'A9o', 'A8o', 'KTs', 'KTo', 'K9s', 'K8s', 'QJs', 'QJo', 'QTs'],
-                '65%': ['77', 'A5s', 'A4s', 'A7o', 'A6o', 'K7s', 'K6s', 'K9o', 'QTo', 'Q9s', 'Q8s', 'JTs', 'JTo', 'J9s', 'J8s'],
-                '55%': ['66', 'A3s', 'A2s', 'A5o', 'A4o', 'K5s', 'K4s', 'K8o', 'Q7s', 'Q6s', 'Q9o', 'J7s', 'J6s', 'J9o', 'T9s', 'T8s', 'T7s', '98s', '97s'],
-                '45%': ['55', 'A3o', 'A2o', 'K3s', 'K2s', 'K7o', 'Q5s', 'Q4s', 'Q8o', 'J5s', 'J4s', 'J8o', 'T6s', 'T5s', 'T9o', '96s', '95s', '87s', '86s', '76s'],
-                '35%': ['44', 'K6o', 'K5o', 'Q3s', 'Q2s', 'Q7o', 'J3s', 'J2s', 'J7o', 'T4s', 'T3s', 'T8o', '94s', '93s', '85s', '84s', '75s', '74s', '65s'],
-                '25%': ['33', '22', 'K4o', 'Q6o', 'Q5o', 'J6o', 'T2s', 'T7o', '92s', '83s', '82s', '73s', '72s', '64s', '63s', '54s', '53s'],
-                '15%': ['K3o', 'K2o', 'Q4o', 'J5o', 'J4o', 'T6o', 'T5o', '98o', '62s', '52s', '43s', '42s'],
-                '8%': ['Q3o', 'Q2o', 'J3o', 'T4o', '97o', '87o', '32s'],
-                '4%': ['J2o', 'T3o', 'T2o', '96o'],
-                'fold': 'resto'
-            }
-        };
-
-        function getHandClass(hand, position) {
-            const range = gtoRanges[position];
-            
-            // Buscar en qué frecuencia está la mano
-            for (const [frequency, hands] of Object.entries(range)) {
-                if (frequency === 'fold') continue;
-                if (hands.includes(hand)) {
-                    const freq = parseInt(frequency.replace('%', ''));
-                    if (freq >= 95) return 'premium';
-                    if (freq >= 75) return 'raise';
-                    if (freq >= 50) return 'reraise';
-                    if (freq >= 25) return 'call';
-                    return 'fold';
-                }
-            }
-            return 'fold';
-        }
-
-        function getHandFrequency(hand, position) {
-            const range = gtoRanges[position];
-            
-            for (const [frequency, hands] of Object.entries(range)) {
-                if (frequency === 'fold') continue;
-                if (hands.includes(hand)) {
-                    return frequency;
-                }
-            }
-            return '0%';
-        }
-
-        function renderTable() {
-            const position = document.getElementById('position').value;
-            const table = document.getElementById('preflop-table');
-            table.innerHTML = '';
-
-            hands.forEach(row => {
-                const tr = document.createElement('tr');
-                row.forEach(hand => {
-                    const td = document.createElement('td');
-                    const handClass = getHandClass(hand, position);
-                    const frequency = getHandFrequency(hand, position);
-                    td.className = `hand-cell ${handClass}`;
-                    td.textContent = hand;
-                    td.title = `${hand} - ${position.toUpperCase()}: ${frequency} frecuencia`;
-                    tr.appendChild(td);
-                });
-                table.appendChild(tr);
-            });
-        }
-
-        document.getElementById('position').addEventListener('change', renderTable);
-        renderTable();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
+

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Equity Calculator</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .grid-cols-13 {
+            grid-template-columns: repeat(13, minmax(0, 1fr));
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const Calculator = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="10" x2="8" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>;
+        const RotateCcw = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+        const X = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        
+        const SUITS = ['♠', '♥', '♦', '♣'];
+        const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+        const RANK_VALUES = { 'A': 14, 'K': 13, 'Q': 12, 'J': 11, 'T': 10, '9': 9, '8': 8, '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2 };
+
+        const PRESET_RANGES = {
+          'Tight (15%)': 'TT+,AJs+,KQs,AKo,AQo',
+          'Loose (35%)': '22+,A7s+,K9s+,Q9s+,J9s+,T8s+,97s+,86s+,75s+,64s+,A9o+,KTo+,QTo+,JTo',
+          'Very Tight (6%)': 'QQ+,AKs,AKo',
+          'LAG (45%)': '22+,A2s+,K6s+,Q8s+,J8s+,T7s+,96s+,85s+,74s+,63s+,52s+,A7o+,K9o+,Q9o+,J9o+,T9o+',
+          'All-in (100%)': '22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+,72o+,62o+,52o+,42o+,32o+'
+        };
+
+        function PokerEquityCalculator() {
+          const [heroCards, setHeroCards] = useState(['', '']);
+          const [villainRange, setVillainRange] = useState('Tight (15%)');
+          const [customRange, setCustomRange] = useState('');
+          const [board, setBoard] = useState(['', '', '', '', '']);
+          const [currentStreet, setCurrentStreet] = useState('preflop');
+          const [equity, setEquity] = useState({ hero: 50, villain: 50 });
+          const [selectedPosition, setSelectedPosition] = useState(null);
+          const [calculating, setCalculating] = useState(false);
+          const [showCardPicker, setShowCardPicker] = useState(false);
+          const [showRangesPage, setShowRangesPage] = useState(false);
+          const [quickSelectMode, setQuickSelectMode] = useState(false);
+          const [selectedRank, setSelectedRank] = useState(null);
+
+          const getUsedCards = () => {
+            return [...heroCards.filter(c => c), ...board.filter(c => c)];
+          };
+
+          const evaluateHand = (cards) => {
+            if (cards.length < 5) return { rank: 0, kickers: [] };
+            
+            const cardValues = cards.map(card => {
+              const rank = card[0];
+              const suit = card[1];
+              return { rank, suit, value: RANK_VALUES[rank] };
+            }).sort((a, b) => b.value - a.value);
+            
+            const ranks = cardValues.map(c => c.rank);
+            const suits = cardValues.map(c => c.suit);
+            const values = cardValues.map(c => c.value);
+            
+            const rankCounts = {};
+            ranks.forEach(rank => rankCounts[rank] = (rankCounts[rank] || 0) + 1);
+            const counts = Object.entries(rankCounts).map(([rank, count]) => ({ rank, count, value: RANK_VALUES[rank] }))
+                                     .sort((a, b) => b.count - a.count || b.value - a.value);
+            
+            const suitCounts = {};
+            suits.forEach(suit => suitCounts[suit] = (suitCounts[suit] || 0) + 1);
+            const isFlush = Object.values(suitCounts).some(count => count >= 5);
+            
+            const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+            let isStraight = false;
+            let straightHigh = 0;
+            
+            for (let i = 0; i <= uniqueValues.length - 5; i++) {
+              if (uniqueValues[i] - uniqueValues[i + 4] === 4) {
+                isStraight = true;
+                straightHigh = uniqueValues[i];
+                break;
+              }
+            }
+            
+            if (!isStraight && uniqueValues.includes(14) && uniqueValues.includes(5) && 
+                uniqueValues.includes(4) && uniqueValues.includes(3) && uniqueValues.includes(2)) {
+              isStraight = true;
+              straightHigh = 5;
+            }
+            
+            if (isFlush && isStraight) {
+              if (straightHigh === 14) return { rank: 9, kickers: [14] };
+              return { rank: 8, kickers: [straightHigh] };
+            }
+            if (counts[0].count === 4) return { rank: 7, kickers: [counts[0].value, counts[1].value] };
+            if (counts[0].count === 3 && counts[1].count === 2) return { rank: 6, kickers: [counts[0].value, counts[1].value] };
+            if (isFlush) {
+              const flushCards = cardValues.filter(c => c.suit === Object.keys(suitCounts).find(s => suitCounts[s] >= 5))
+                                           .sort((a, b) => b.value - a.value).slice(0, 5);
+              return { rank: 5, kickers: flushCards.map(c => c.value) };
+            }
+            if (isStraight) return { rank: 4, kickers: [straightHigh] };
+            if (counts[0].count === 3) {
+              const kickers = counts.slice(1).filter(c => c.count === 1).slice(0, 2).map(c => c.value);
+              return { rank: 3, kickers: [counts[0].value, ...kickers] };
+            }
+            if (counts[0].count === 2 && counts[1].count === 2) {
+              const kicker = counts.find(c => c.count === 1)?.value || 0;
+              return { rank: 2, kickers: [Math.max(counts[0].value, counts[1].value), Math.min(counts[0].value, counts[1].value), kicker] };
+            }
+            if (counts[0].count === 2) {
+              const kickers = counts.slice(1).filter(c => c.count === 1).slice(0, 3).map(c => c.value);
+              return { rank: 1, kickers: [counts[0].value, ...kickers] };
+            }
+            
+            const highCards = values.slice(0, 5);
+            return { rank: 0, kickers: highCards };
+          };
+
+          const compareHands = (hand1, hand2) => {
+            if (hand1.rank !== hand2.rank) return hand1.rank - hand2.rank;
+            for (let i = 0; i < Math.max(hand1.kickers.length, hand2.kickers.length); i++) {
+              const k1 = hand1.kickers[i] || 0;
+              const k2 = hand2.kickers[i] || 0;
+              if (k1 !== k2) return k1 - k2;
+            }
+            return 0;
+          };
+
+          const parseRange = (rangeString) => {
+            const hands = [];
+            const parts = rangeString.split(',');
+            
+            parts.forEach(part => {
+              part = part.trim();
+              
+              if (part.includes('+')) {
+                const base = part.replace('+', '');
+                if (base.length === 2 && base[0] === base[1]) {
+                  const rankIndex = RANKS.indexOf(base[0]);
+                  for (let i = 0; i <= rankIndex; i++) {
+                    hands.push(RANKS[i] + RANKS[i]);
+                  }
+                } else if (base.length === 3) {
+                  const rank1 = base[0];
+                  const rank2 = base[1];
+                  const suited = base[2] === 's';
+                  const rank1Index = RANKS.indexOf(rank1);
+                  
+                  for (let i = 0; i < RANKS.length; i++) {
+                    if (RANK_VALUES[RANKS[i]] <= RANK_VALUES[rank2]) {
+                      hands.push(rank1 + RANKS[i] + (suited ? 's' : 'o'));
+                    }
+                  }
+                }
+              } else {
+                hands.push(part);
+              }
+            });
+            
+            return hands;
+          };
+
+          const handToCombos = (handString) => {
+            if (handString.length === 2 && handString[0] === handString[1]) {
+              const rank = handString[0];
+              const combos = [];
+              for (let i = 0; i < SUITS.length; i++) {
+                for (let j = i + 1; j < SUITS.length; j++) {
+                  combos.push([rank + SUITS[i], rank + SUITS[j]]);
+                }
+              }
+              return combos;
+            }
+            
+            if (handString.length === 3) {
+              const rank1 = handString[0];
+              const rank2 = handString[1];
+              const suited = handString[2] === 's';
+              const combos = [];
+              
+              if (suited) {
+                for (const suit of SUITS) {
+                  combos.push([rank1 + suit, rank2 + suit]);
+                }
+              } else {
+                for (const suit1 of SUITS) {
+                  for (const suit2 of SUITS) {
+                    if (suit1 !== suit2) {
+                      combos.push([rank1 + suit1, rank2 + suit2]);
+                    }
+                  }
+                }
+              }
+              return combos;
+            }
+            
+            return [];
+          };
+
+          const calculateEquity = () => {
+            if (heroCards.filter(c => c).length !== 2) return;
+            
+            setCalculating(true);
+            
+            setTimeout(() => {
+              const heroCardsFiltered = heroCards.filter(c => c);
+              const boardCards = board.filter(c => c);
+              const usedCards = [...heroCardsFiltered, ...boardCards];
+              
+              const rangeString = villainRange === 'Custom' ? customRange : PRESET_RANGES[villainRange];
+              if (!rangeString) {
+                setCalculating(false);
+                return;
+              }
+              
+              const hands = parseRange(rangeString);
+              let villainCombos = [];
+              
+              hands.forEach(hand => {
+                const combos = handToCombos(hand);
+                villainCombos.push(...combos);
+              });
+              
+              const remainingCards = [];
+              for (const rank of RANKS) {
+                for (const suit of SUITS) {
+                  const card = rank + suit;
+                  if (!usedCards.includes(card)) {
+                    remainingCards.push(card);
+                  }
+                }
+              }
+              
+              let heroWins = 0;
+              let totalGames = 0;
+              const simulations = 10000;
+              
+              if (villainCombos.length === 0) {
+                setEquity({ hero: 50, villain: 50 });
+                setCalculating(false);
+                return;
+              }
+              
+              const cardsNeeded = 5 - boardCards.length;
+              
+              for (let sim = 0; sim < simulations; sim++) {
+                const villainHand = villainCombos[Math.floor(Math.random() * villainCombos.length)];
+                
+                if (villainHand.some(card => usedCards.includes(card))) continue;
+                
+                const availableForBoard = remainingCards.filter(card => !villainHand.includes(card));
+                
+                let fullBoard = [...boardCards];
+                const shuffled = [...availableForBoard].sort(() => Math.random() - 0.5);
+                
+                for (let i = 0; i < cardsNeeded && i < shuffled.length; i++) {
+                  fullBoard.push(shuffled[i]);
+                }
+                
+                if (fullBoard.length === 5) {
+                  const heroHandEval = evaluateHand([...heroCardsFiltered, ...fullBoard]);
+                  const villainHandEval = evaluateHand([...villainHand, ...fullBoard]);
+                  
+                  const comparison = compareHands(heroHandEval, villainHandEval);
+                  if (comparison > 0) {
+                    heroWins++;
+                  } else if (comparison === 0) {
+                    heroWins += 0.5;
+                  }
+                  totalGames++;
+                }
+              }
+              
+              if (totalGames > 0) {
+                const heroEquity = (heroWins / totalGames) * 100;
+                setEquity({ 
+                  hero: Math.round(heroEquity * 10) / 10, 
+                  villain: Math.round((100 - heroEquity) * 10) / 10 
+                });
+              }
+              
+              setCalculating(false);
+            }, 200);
+          };
+
+          const selectCard = (card) => {
+            if (!selectedPosition) return;
+            
+            const [type, index] = selectedPosition.split('-');
+            
+            if (type === 'hero') {
+              const newHeroCards = [...heroCards];
+              newHeroCards[parseInt(index)] = card;
+              setHeroCards(newHeroCards);
+            } else if (type === 'board') {
+              const newBoard = [...board];
+              newBoard[parseInt(index)] = card;
+              setBoard(newBoard);
+              
+              const boardCount = newBoard.filter(c => c).length;
+              if (boardCount === 3) setCurrentStreet('flop');
+              else if (boardCount === 4) setCurrentStreet('turn');
+              else if (boardCount === 5) setCurrentStreet('river');
+              else if (boardCount < 3) setCurrentStreet('preflop');
+            }
+            
+            setShowCardPicker(false);
+            setSelectedPosition(null);
+          };
+
+          const handleCardSelect = (card) => {
+            selectCard(card);
+          };
+
+          const openCardPicker = (position) => {
+            setSelectedPosition(position);
+            setShowCardPicker(true);
+          };
+
+          const removeCard = (type, index) => {
+            if (type === 'hero') {
+              const newHeroCards = [...heroCards];
+              newHeroCards[index] = '';
+              setHeroCards(newHeroCards);
+            } else if (type === 'board') {
+              const newBoard = [...board];
+              newBoard[index] = '';
+              setBoard(newBoard);
+              
+              const boardCount = newBoard.filter(c => c).length;
+              if (boardCount === 3) setCurrentStreet('flop');
+              else if (boardCount === 4) setCurrentStreet('turn');
+              else if (boardCount === 5) setCurrentStreet('river');
+              else if (boardCount < 3) setCurrentStreet('preflop');
+            }
+          };
+
+          const resetAll = () => {
+            setHeroCards(['', '']);
+            setBoard(['', '', '', '', '']);
+            setCurrentStreet('preflop');
+            setEquity({ hero: 50, villain: 50 });
+          };
+
+          useEffect(() => {
+            if (heroCards.filter(c => c).length === 2) {
+              calculateEquity();
+            }
+          }, [heroCards, villainRange, customRange, board]);
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-50 to-purple-50 p-4">
+              <div className="max-w-6xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                  <h1 className="text-3xl font-bold text-gray-800">🃏 Calculador de Equity Pro</h1>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => window.open('gto.html', '_blank')}
+                      className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-green-700 flex items-center gap-2 transition-all shadow-lg"
+                    >
+                      <span className="text-lg">📊</span>
+                      GTO Preflop
+                    </button>
+                    <button
+                      onClick={() => setShowRangesPage(true)}
+                      className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 flex items-center gap-2 transition-all shadow-lg"
+                    >
+                      <span className="text-lg">🃏</span>
+                      Ver Rangos
+                    </button>
+                    <button 
+                      onClick={resetAll}
+                      className="bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 flex items-center gap-2 transition-all shadow-lg"
+                    >
+                      <RotateCcw />
+                      Reset
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mb-8">
+                  <div className="flex gap-3 justify-center">
+                    {['preflop', 'flop', 'turn', 'river'].map(street => (
+                      <span 
+                        key={street}
+                        className={`px-6 py-3 rounded-xl text-sm font-bold capitalize transition-all ${
+                          currentStreet === street ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-110' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        {street}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-8">
+                  <div className="bg-white rounded-2xl p-6 shadow-xl">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                      <Calculator />
+                      Configuración de Manos
+                    </h2>
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <label className="block text-sm font-semibold text-gray-700">Hero Cards:</label>
+                          <button
+                            onClick={() => setQuickSelectMode(!quickSelectMode)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+                              quickSelectMode 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                          >
+                            ⚡ Quick Select
+                          </button>
+                        </div>
+                        
+                        <div className="flex gap-4 justify-center">
+                          {heroCards.map((card, index) => (
+                            <div key={index} className="relative">
+                              <div 
+                                onClick={() => {
+                                  if (quickSelectMode) {
+                                    setSelectedPosition(`hero-${index}`);
+                                  } else {
+                                    openCardPicker(`hero-${index}`);
+                                  }
+                                }}
+                                className={`w-20 h-28 border-3 rounded-xl cursor-pointer transition-all shadow-lg hover:scale-105 flex items-center justify-center text-lg font-bold ${
+                                  selectedPosition === `hero-${index}` && quickSelectMode 
+                                    ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400' 
+                                    : card 
+                                      ? 'bg-white border-blue-500 text-gray-800' 
+                                      : 'bg-gray-100 border-gray-300 border-dashed hover:border-blue-400'
+                                }`}
+                              >
+                                {card || (selectedPosition === `hero-${index}` && quickSelectMode ? '🎯' : '+')}
+                              </div>
+                              {card && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); removeCard('hero', index); }}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">Board:</label>
+                        <div className="flex gap-3 justify-center">
+                          <div className="flex gap-2">
+                            {board.slice(0, 3).map((card, index) => (
+                              <div key={index} className="relative">
+                                <div 
+                                  onClick={() => {
+                                    if (quickSelectMode) {
+                                      setSelectedPosition(`board-${index}`);
+                                    } else {
+                                      openCardPicker(`board-${index}`);
+                                    }
+                                  }}
+                                  className={`w-16 h-22 border-2 rounded-lg cursor-pointer transition-all shadow-md hover:scale-105 flex items-center justify-center text-sm font-bold ${
+                                    selectedPosition === `board-${index}` && quickSelectMode
+                                      ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400'
+                                      : card 
+                                        ? 'bg-white border-green-500 text-gray-800' 
+                                        : 'bg-gray-100 border-gray-300 border-dashed hover:border-green-400'
+                                  }`}
+                                >
+                                  {card || (selectedPosition === `board-${index}` && quickSelectMode ? '🎯' : '+')}
+                                </div>
+                                {card && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); removeCard('board', index); }}
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="w-px bg-gray-300 mx-2"></div>
+                          <div className="flex gap-2">
+                            {board.slice(3, 5).map((card, index) => (
+                              <div key={index + 3} className="relative">
+                                <div 
+                                  onClick={() => {
+                                    if (quickSelectMode) {
+                                      setSelectedPosition(`board-${index + 3}`);
+                                    } else {
+                                      openCardPicker(`board-${index + 3}`);
+                                    }
+                                  }}
+                                  className={`w-16 h-22 border-2 rounded-lg cursor-pointer transition-all shadow-md hover:scale-105 flex items-center justify-center text-sm font-bold ${
+                                    selectedPosition === `board-${index + 3}` && quickSelectMode
+                                      ? 'bg-yellow-100 border-yellow-500 ring-2 ring-yellow-400'
+                                      : card 
+                                        ? 'bg-white border-orange-500 text-gray-800' 
+                                        : 'bg-gray-100 border-gray-300 border-dashed hover:border-orange-400'
+                                  }`}
+                                >
+                                  {card || (selectedPosition === `board-${index + 3}` && quickSelectMode ? '🎯' : '+')}
+                                </div>
+                                {card && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); removeCard('board', index + 3); }}
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center mt-2">Flop | Turn & River</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">Rango del Villano:</label>
+                        <select 
+                          value={villainRange} 
+                          onChange={(e) => setVillainRange(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          {Object.keys(PRESET_RANGES).map(range => (
+                            <option key={range} value={range}>{range}</option>
+                          ))}
+                          <option value="Custom">Custom Range</option>
+                        </select>
+                        
+                        {villainRange === 'Custom' && (
+                          <input 
+                            type="text" 
+                            value={customRange}
+                            onChange={(e) => setCustomRange(e.target.value)}
+                            placeholder="ej: AA,KK,QQ,AK"
+                            className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 shadow-xl">
+                    <h2 className="text-xl font-semibold text-gray-800 mb-6">📊 Equity Results</h2>
+                    
+                    <div className="space-y-6">
+                      <div className="relative">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-lg font-semibold text-blue-600">Hero</span>
+                          <span className="text-2xl font-bold text-blue-600">
+                            {calculating ? '...' : `${equity.hero}%`}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden"
+                            style={{ width: `${equity.hero}%` }}
+                          >
+                            <div className="absolute inset-0 bg-white opacity-20 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="relative">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-lg font-semibold text-red-600">Villain</span>
+                          <span className="text-2xl font-bold text-red-600">
+                            {calculating ? '...' : `${equity.villain}%`}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div 
+                            className="bg-gradient-to-r from-red-500 to-red-600 h-4 rounded-full transition-all duration-1000 relative overflow-hidden"
+                            style={{ width: `${equity.villain}%` }}
+                          >
+                            <div className="absolute inset-0 bg-white opacity-20 animate-pulse"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {calculating && (
+                        <div className="text-center py-4">
+                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                          <p className="text-sm text-gray-600 mt-2">Calculando equity...</p>
+                        </div>
+                      )}
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Simulaciones</p>
+                            <p className="text-lg font-bold text-gray-800">10,000</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide">Street</p>
+                            <p className="text-lg font-bold text-gray-800 capitalize">{currentStreet}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>🚀 Tip Pro:</strong> Usa este calculador en tiempo real durante tus sesiones para tomar decisiones más precisas. 
+                    Ideal para analizar spots complicados y estudiar equity en diferentes situaciones.
+                  </p>
+                </div>
+              </div>
+
+              {showCardPicker && (
+                <CardPicker 
+                  onSelect={handleCardSelect} 
+                  onClose={() => setShowCardPicker(false)}
+                  usedCards={getUsedCards()}
+                />
+              )}
+              
+              {quickSelectMode && selectedPosition && (
+                <QuickCardSelect
+                  onSelectCard={(card) => {
+                    if (selectedPosition) {
+                      selectCard(card);
+                      setSelectedRank(null);
+                    }
+                  }}
+                  usedCards={getUsedCards()}
+                  onClose={() => {
+                    setQuickSelectMode(false);
+                    setSelectedRank(null);
+                  }}
+                  selectedRank={selectedRank}
+                  setSelectedRank={setSelectedRank}
+                />
+              )}
+            </div>
+          );
+        }
+
+        function QuickCardSelect({ onSelectCard, usedCards, onClose, selectedRank, setSelectedRank }) {
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-2xl w-full">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-medium text-blue-800">⚡ 1. Selecciona RANK → 2. Selecciona SUIT</span>
+                  <button onClick={onClose} className="text-blue-600 hover:text-blue-800 font-bold">×</button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-blue-700 font-medium mb-2">PASO 1 - RANK:</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {RANKS.map(rank => (
+                        <button
+                          key={rank}
+                          onClick={() => setSelectedRank(rank)}
+                          className={`px-4 py-3 border-2 rounded-lg font-bold text-xl transition-all ${
+                            selectedRank === rank
+                              ? 'bg-green-500 text-white border-green-600 scale-110'
+                              : 'bg-white border-blue-300 hover:border-blue-500 hover:bg-blue-100'
+                          }`}
+                        >
+                          {rank}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {selectedRank && (
+                    <div>
+                      <p className="text-xs text-blue-700 font-medium mb-2">PASO 2 - SUIT para {selectedRank}:</p>
+                      <div className="flex gap-3 justify-center">
+                        {SUITS.map(suit => {
+                          const card = selectedRank + suit;
+                          const isUsed = usedCards.includes(card);
+                          const suitColor = suit === '♥' || suit === '♦' ? 'text-red-500' : 'text-black';
+                          
+                          return (
+                            <button
+                              key={suit}
+                              onClick={() => {
+                                if (!isUsed) {
+                                  onSelectCard(card);
+                                  setSelectedRank(null);
+                                }
+                              }}
+                              disabled={isUsed}
+                              className={`w-16 h-20 border-2 rounded-lg font-bold text-2xl transition-all hover:scale-110 flex flex-col items-center justify-center ${
+                                isUsed 
+                                  ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed' 
+                                  : `bg-white border-green-400 hover:border-green-600 hover:shadow-lg ${suitColor} hover:bg-green-50`
+                              }`}
+                            >
+                              <span className="text-sm">{selectedRank}</span>
+                              <span className="text-3xl leading-none">{suit}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        function CardPicker({ onSelect, onClose, usedCards }) {
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">Selecciona una carta</h3>
+                  <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                </div>
+                
+                <div className="grid grid-cols-13 gap-2">
+                  {RANKS.map(rank => 
+                    SUITS.map(suit => {
+                      const card = rank + suit;
+                      const isUsed = usedCards.includes(card);
+                      const suitColor = suit === '♥' || suit === '♦' ? 'text-red-500' : 'text-black';
+                      
+                      return (
+                        <button
+                          key={card}
+                          onClick={() => !isUsed && onSelect(card)}
+                          disabled={isUsed}
+                          className={`aspect-[3/4] border-2 rounded-lg font-bold text-sm transition-all hover:scale-105 flex flex-col items-center justify-center
+                            ${isUsed 
+                              ? 'bg-gray-200 border-gray-300 text-gray-400 cursor-not-allowed' 
+                              : `bg-white border-gray-300 hover:border-blue-500 hover:shadow-lg ${suitColor}`
+                            }`}
+                        >
+                          <span className="text-xs">{rank}</span>
+                          <span className="text-lg leading-none">{suit}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PokerEquityCalculator />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Coach EV – Lector de Manos</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#111;color:#eee;padding:2rem}
+  textarea{width:100%;height:300px;font-family:monospace;font-size:.85rem}
+  button{margin-top:.5rem;padding:.6rem 1.3rem;font-size:1rem;cursor:pointer}
+  #output{margin-top:1.2rem}
+  .handBox{background:#1e1e1e;border:1px solid #444;border-radius:6px;padding:1rem;margin-bottom:1rem}
+  .ok{color:#76ff7b}
+  .leak{color:#ff7474}
+  .advice{background:#222;padding:.8rem;border-left:4px #76ff7b solid;margin-top:.6rem;font-size:.95rem}
+  summary{cursor:pointer;font-weight:bold;margin-bottom:.4rem}
+</style>
+</head>
+<body>
+
+<h1>Coach EV – Lector de Manos</h1>
+<label>Pega abajo cualquier cantidad de historiales (CoinPoker, PS, 888…):</label><br>
+<textarea id="rawHands" placeholder="Pega aquí todas las manos que quieras analizar…"></textarea><br>
+<button onclick="runCoach()">Analizar manos</button>
+
+<div id="output"></div>
+
+<script>
+/***************  UTILS  ****************/
+const fmt=n=>Number(n).toFixed(2);
+const RANGES={
+  // modelo muy simplificado para 2NL 6-max
+  UTG:'77+,ATs+,KTs+,QTs+,AJo+,KQo',
+  MP:'66+,A8s+,KTs+,QTs+,JTs,ATo+,KJo+',
+  CO:'22+,A2s+,K9s+,Q9s+,J9s+,T8s+,98s,87s,ATo+,KTo+,QTo+,JTo',
+  BTN:'22+,A2s+,K2s+,Q5s+,J7s+,T7s+,97s+,86s+,75s+,65s,54s,A2o+,K7o+,Q8o+,J8o+,T8o+',
+  SB:'22+,A2s+,K2s+,Q4s+,J6s+,T6s+,96s+,85s+,75s+,64s+,A3o+,K8o+,Q8o+,J8o+,T7o+,97o+',
+  BB:'22+,A2s+,K2s+,Q3s+,J5s+,T5s+,95s+,84s+,74s+,63s+,53s+,43s,A2o+,K2o+,Q5o+,J7o+,T7o+,96o+,85o+'
+};
+function comboPercent(hand,range){ /* super simplificado: 0-100 */
+  if(!hand||!range)return 50;
+  // rangos ponderados: asumimos 50 % equity vs rango amplio
+  if(hand.includes('AA'))return 85;
+  if(hand.includes('KK'))return 82;
+  if(hand.includes('AK'))return 65;
+  if(hand.includes('A5s'))return 48;
+  if(hand.includes('A5o'))return 45;
+  if(hand.includes('KQs'))return 63;
+  if(hand.includes('QJs'))return 60;
+  if(hand.includes('JTs'))return 58;
+  if(hand.includes('T9s'))return 54;
+  if(hand.includes('22'))return 50;
+  return 47; // default resto
+}
+
+/***************  PARSER  ****************/
+function parseMulti(txt){
+  // separa por "*** HOLE CARDS ***" o por "Hand #"
+  const blocks=txt.split(/(?=Hand\s+#|\*\*\* HOLE CARDS \*\*\*)/).filter(b=>b.trim());
+  return blocks.map(b=>{
+    const lines=b.split('\n').map(l=>l.trim()).filter(l=>l);
+    const handLine=lines.find(l=>l.includes('Hand #'));
+    const handId=handLine?handLine.match(/Hand\s+#(\d+)/)[1]:'???';
+
+    // hero
+    const dealt=lines.find(l=>l.startsWith('Dealt to'));
+    let heroName='',heroCards='';
+    if(dealt){
+      const m=dealt.match(/Dealt to (\S+) \[(.. ..)\]/);
+      if(m){heroName=m[1];heroCards=m[2];}
+    }
+    // seats
+    const seats=[];
+    lines.forEach(l=>{
+      const m=l.match(/Seat (\d+): (\S+) \(([\d.]+) in chips\)/);
+      if(m)seats.push({seat:+m[1],name:m[2],stack:+m[3]});
+    });
+    const heroSeat=seats.find(s=>s.name===heroName);
+    const startStack=heroSeat?heroSeat.stack:0;
+
+    // calles/raises totales de hero
+    let invested=0;
+    const actionRe=new RegExp(`^${heroName}: (\\S+)\\s*([\\d.]+)?`);
+    lines.forEach(l=>{
+      const m=l.match(actionRe);
+      if(m){
+        const v=m[1],amt=parseFloat(m[2]||0);
+        if(v==='bets'||v==='calls')invested+=amt;
+        if(v==='raises'){
+          const to=l.match(/to ([\d.]+)/);
+          if(to)invested=+to[1]; //overwrite simplificado
+        }
+      }
+    });
+    // ganado
+    const collected=lines.find(l=>l.includes('collected')&&l.includes(heroName));
+    let won=0;
+    if(collected){const m=collected.match(/collected ([\d.]+)/);if(m)won=+m[1];}
+    const net=won-invested;
+
+    // acciones por calle
+    const streets={preflop:[],flop:[],turn:[],river:[]};
+    let cur='preflop';
+    const mark={ '*** HOLE CARDS ***':'preflop','*** FLOP ***':'flop','*** TURN ***':'turn','*** RIVER ***':'river'};
+    lines.forEach(l=>{
+      const k=Object.keys(mark).find(x=>l.includes(x));
+      if(k){cur=mark[k];return;}
+      if(streets[cur])streets[cur].push(l);
+    });
+    return {handId,heroName,heroCards,startStack,invested,net,streets};
+  });
+}
+
+/***************  COACH  ****************/
+function coachReport(h){
+  const adv=[]; //array de consejos
+  const {heroCards,invested,streets}=h;
+  const hand=heroCards||'';
+  // 1) pre-flop
+  const preActions=streets.preflop.filter(l=>l.includes(h.heroName));
+  const callPre=preActions.some(l=>l.includes('calls'));
+  const raisePre=preActions.some(l=>l.includes('raises'));
+  if(callPre&&!raisePre){
+    // cold-call -> revisar mano
+    const eq=comboPercent(hand,'BTN'); //vs rango BTN
+    if(eq<50){
+      adv.push(`🔴 Fold pre-flop: ${hand} tiene sólo ~${eq}% equity vs el rango de apertura. 3-bet o fold.`);
+    }
+  }
+  // 2) flop check-back sin iniciativa
+  const flopActions=streets.flop.filter(l=>l.includes(h.heroName));
+  if(flopActions.length===0){
+    adv.push(`🔴 Flop: check-back sin iniciativa con ${hand}. Si no tienes showdown value, necesitas semi-bluff (back-door color/straight) o fold en turn.`);
+  }
+  // 3) turn min-bet
+  const turnActions=streets.turn.filter(l=>l.includes(h.heroName));
+  const minBet=turnActions.some(l=>{
+    const m=l.match(/bets ([\d.]+)/);
+    return m&&+m[1]<=0.03;
+  });
+  if(minBet){
+    adv.push(`🔴 Turn: min-bet no hace fold nada. Usa 66-75 % bote o check-fold.`);
+  }
+  // 4) river check-back tras línea perdedora
+  const riverActions=streets.river.filter(l=>l.includes(h.heroName));
+  if(riverActions.length===0&&h.net<0){
+    adv.push(`🔴 River: check-back resignándote. Si el board no mejora tus bluffs, decide: tercer barrel (para fold equity) o check-fold temprano.`);
+  }
+  return adv;
+}
+
+/***************  DRIVER  ****************/
+function runCoach(){
+  const txt=document.getElementById('rawHands').value;
+  if(!txt.trim()){alert('Pega al menos una mano');return;}
+  const hands=parseMulti(txt);
+  let html='';
+  let totalNet=0,leaksFound=0;
+  hands.forEach(h=>{
+    totalNet+=h.net;
+    const adv=coachReport(h);
+    leaksFound+=adv.length;
+    html+=`<div class="handBox">
+      <details><summary>Mano #${h.handId} – Tu stack: ${fmt(h.startStack)} – Neto: <span class="${h.net>=0?'ok':'leak'}">${fmt(h.net)}</span></summary>
+      <p><b>Tus cartas:</b> ${h.heroCards||'no encontradas'}</p>
+      <p><b>Invertido:</b> ${fmt(h.invested)}</p>
+      ${adv.length?`<div class="advice"><b>Consejos coach:</b><ul>`+adv.map(a=>`<li>${a}</li>`).join('')+`</ul></div>`:'<p class="ok">✅ Sin errores claros en esta mano.</p>'}
+      </details></div>`;
+  });
+  html=`<h3>Resumen del set</h3>
+  <p>Total de manos: ${hands.length} – Resultado global: <b class="${totalNet>=0?'ok':'leak'}">${fmt(totalNet)}</b> – Leaks detectados: ${leaksFound}</p>`+html;
+  document.getElementById('output').innerHTML=html;
+}
+</script>
+
+</body>
+</html>

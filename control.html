@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Poker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .records-section {
+            margin-top: 30px;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .records-table th,
+        .records-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .records-table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .records-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .profit {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .loss {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card p {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .form-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎰 Registro de Poker</h1>
+            <p>Lleva el control de tus partidas de torneo y cash game</p>
+        </div>
+        
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('tournament')">Torneos</button>
+                <button class="tab" onclick="showTab('cash')">Cash Game</button>
+                <button class="tab" onclick="showTab('stats')">Estadísticas</button>
+            </div>
+
+            <!-- Pestaña de Torneos -->
+            <div id="tournament" class="tab-content active">
+                <div class="form-section">
+                    <div>
+                        <div class="form-group">
+                            <label for="tournament-date">Fecha:</label>
+                            <input type="date" id="tournament-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tournament-name">Nombre del Torneo:</label>
+                            <input type="text" id="tournament-name" placeholder="Ej: Sunday Million" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tournament-buyin">Buy-in ($):</label>
+                            <input type="number" id="tournament-buyin" step="0.01" min="0" placeholder="55.00" required>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label for="tournament-position">Posición Final:</label>
+                            <input type="number" id="tournament-position" placeholder="12" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tournament-prize">Premio ($):</label>
+                            <input type="number" id="tournament-prize" step="0.01" placeholder="0.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tournament-players">Número de Jugadores:</label>
+                            <input type="number" id="tournament-players" placeholder="180" required>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="addTournament()">Agregar Torneo</button>
+            </div>
+
+            <!-- Pestaña de Cash Game -->
+            <div id="cash" class="tab-content">
+                <div class="form-section">
+                    <div>
+                        <div class="form-group">
+                            <label for="cash-date">Fecha:</label>
+                            <input type="date" id="cash-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash-stakes">Stakes:</label>
+                            <input type="text" id="cash-stakes" placeholder="Ej: 1/2, 2/5, 5/10" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash-buyin">Buy-in ($):</label>
+                            <input type="number" id="cash-buyin" step="0.01" min="0" placeholder="200.00" required>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="form-group">
+                            <label for="cash-cashout">Cash-out ($):</label>
+                            <input type="number" id="cash-cashout" step="0.01" placeholder="350.00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash-hours">Horas Jugadas:</label>
+                            <input type="number" id="cash-hours" step="0.5" placeholder="4.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash-location">Ubicación:</label>
+                            <input type="text" id="cash-location" placeholder="Casino, Online, Casa" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cash-ev">EV Estimado ($):</label>
+                            <input type="number" id="cash-ev" step="0.01" placeholder="25.00">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="addCashGame()">Agregar Cash Game</button>
+            </div>
+
+            <!-- Pestaña de Estadísticas -->
+            <div id="stats" class="tab-content">
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Ganancia Total</h3>
+                        <p id="total-profit">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Partidas Jugadas</h3>
+                        <p id="total-games">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>ROI Torneos</h3>
+                        <p id="tournament-roi">0%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>$/Hora Cash</h3>
+                        <p id="cash-hourly">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>EV/Hora Cash</h3>
+                        <p id="cash-ev-hourly">$0.00</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Registros -->
+            <div class="records-section">
+                <h2>Historial de Partidas</h2>
+                <table class="records-table" id="records-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Detalles</th>
+                            <th>Ganancia/Pérdida</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let records = JSON.parse(localStorage.getItem('pokerRecords')) || [];
+        let chart = null;
+
+        function showTab(tabName) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Mostrar la pestaña seleccionada
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabName === 'stats') {
+                updateStats();
+                updateChart();
+            }
+        }
+
+        function addTournament() {
+            const date = document.getElementById('tournament-date').value;
+            const name = document.getElementById('tournament-name').value;
+            const buyin = parseFloat(document.getElementById('tournament-buyin').value);
+            const position = parseInt(document.getElementById('tournament-position').value);
+            const prize = parseFloat(document.getElementById('tournament-prize').value);
+            const players = parseInt(document.getElementById('tournament-players').value);
+
+            if (!date || !name || buyin < 0 || !position || prize < 0 || !players) {
+                alert('Por favor, completa todos los campos correctamente.');
+                return;
+            }
+
+            const profit = prize - buyin;
+            const record = {
+                id: Date.now(),
+                date: date,
+                type: 'Torneo',
+                details: `${name} - ${position}/${players}`,
+                profit: profit,
+                buyin: buyin,
+                prize: prize
+            };
+
+            records.push(record);
+            saveRecords();
+            displayRecords();
+            clearTournamentForm();
+            alert('Torneo agregado exitosamente!');
+        }
+
+        function addCashGame() {
+            const date = document.getElementById('cash-date').value;
+            const stakes = document.getElementById('cash-stakes').value;
+            const buyin = parseFloat(document.getElementById('cash-buyin').value);
+            const cashout = parseFloat(document.getElementById('cash-cashout').value);
+            const hours = parseFloat(document.getElementById('cash-hours').value);
+            const location = document.getElementById('cash-location').value;
+
+            const ev = parseFloat(document.getElementById('cash-ev').value) || 0;
+            
+            if (!date || !stakes || buyin < 0 || !cashout || !hours || !location) {
+                alert('Por favor, completa todos los campos correctamente.');
+                return;
+            }
+
+            const profit = cashout - buyin;
+            const record = {
+                id: Date.now(),
+                date: date,
+                type: 'Cash Game',
+                details: `${stakes} - ${location} (${hours}h)`,
+                profit: profit,
+                buyin: buyin,
+                cashout: cashout,
+                hours: hours,
+                ev: ev
+            };
+
+            records.push(record);
+            saveRecords();
+            displayRecords();
+            clearCashForm();
+            alert('Cash game agregado exitosamente!');
+        }
+
+        function deleteRecord(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar este registro?')) {
+                records = records.filter(record => record.id !== id);
+                saveRecords();
+                displayRecords();
+            }
+        }
+
+        function saveRecords() {
+            localStorage.setItem('pokerRecords', JSON.stringify(records));
+        }
+
+        function displayRecords() {
+            const tbody = document.getElementById('records-tbody');
+            tbody.innerHTML = '';
+
+            records.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                const profitClass = record.profit >= 0 ? 'profit' : 'loss';
+                const profitSign = record.profit >= 0 ? '+' : '';
+                
+                row.innerHTML = `
+                    <td>${new Date(record.date).toLocaleDateString('es-ES')}</td>
+                    <td>${record.type}</td>
+                    <td>${record.details}</td>
+                    <td class="${profitClass}">${profitSign}$${record.profit.toFixed(2)}</td>
+                    <td><button onclick="deleteRecord(${record.id})" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Eliminar</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStats() {
+            const totalProfit = records.reduce((sum, record) => sum + record.profit, 0);
+            const totalGames = records.length;
+            
+            // ROI de torneos
+            const tournamentRecords = records.filter(r => r.type === 'Torneo');
+            const totalBuyins = tournamentRecords.reduce((sum, record) => sum + record.buyin, 0);
+            const totalPrizes = tournamentRecords.reduce((sum, record) => sum + (record.prize || 0), 0);
+            const tournamentROI = totalBuyins > 0 ? ((totalPrizes - totalBuyins) / totalBuyins * 100) : 0;
+            
+            // $/hora cash
+            const cashRecords = records.filter(r => r.type === 'Cash Game');
+            const totalCashProfit = cashRecords.reduce((sum, record) => sum + record.profit, 0);
+            const totalHours = cashRecords.reduce((sum, record) => sum + (record.hours || 0), 0);
+            const hourlyRate = totalHours > 0 ? totalCashProfit / totalHours : 0;
+            
+            // Estadísticas de EV
+            const totalRealEV = evRecords.reduce((sum, record) => sum + record.estimatedEV, 0);
+            const totalActualResults = evRecords.reduce((sum, record) => sum + record.result, 0);
+            const evDifference = totalActualResults - totalRealEV;
+            
+            // Precisión EV (qué tan cerca están tus estimaciones de los resultados reales)
+            const evAccuracy = evRecords.length > 0 
+                ? Math.max(0, 100 - (Math.abs(evDifference) / Math.abs(totalRealEV) * 100)) 
+                : 0;
+
+            document.getElementById('total-profit').textContent = `${totalProfit.toFixed(2)}`;
+            document.getElementById('total-games').textContent = totalGames;
+            document.getElementById('tournament-roi').textContent = `${tournamentROI.toFixed(1)}%`;
+            document.getElementById('cash-hourly').textContent = `${hourlyRate.toFixed(2)}`;
+            document.getElementById('ev-difference').textContent = `${evDifference >= 0 ? '+' : ''}${evDifference.toFixed(2)}`;
+            document.getElementById('ev-accuracy').textContent = `${evAccuracy.toFixed(1)}%`;
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            // Ordenar registros por fecha
+            const sortedRecords = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            // Calcular ganancia acumulada
+            let cumulativeProfit = 0;
+            const chartData = sortedRecords.map(record => {
+                cumulativeProfit += record.profit;
+                return {
+                    x: record.date,
+                    y: cumulativeProfit
+                };
+            });
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Ganancia Acumulada',
+                        data: chartData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Progreso de Ganancias en el Tiempo',
+                            font: {
+                                size: 18
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Fecha'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Ganancia Acumulada ($)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function clearTournamentForm() {
+            document.getElementById('tournament-date').value = '';
+            document.getElementById('tournament-name').value = '';
+            document.getElementById('tournament-buyin').value = '';
+            document.getElementById('tournament-position').value = '';
+            document.getElementById('tournament-prize').value = '';
+            document.getElementById('tournament-players').value = '';
+        }
+
+        function clearCashForm() {
+            document.getElementById('cash-date').value = '';
+            document.getElementById('cash-stakes').value = '';
+            document.getElementById('cash-buyin').value = '';
+            document.getElementById('cash-cashout').value = '';
+            document.getElementById('cash-hours').value = '';
+            document.getElementById('cash-location').value = '';
+            document.getElementById('cash-ev').value = '';
+        }
+
+        // Hacer funciones globales
+        window.showTab = showTab;
+        window.addTournament = addTournament;
+        window.addCashGame = addCashGame;
+        window.deleteRecord = deleteRecord;
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            displayRecords();
+            updateStats();
+        });
+
+
+    </script>
+</body>
+</html>
